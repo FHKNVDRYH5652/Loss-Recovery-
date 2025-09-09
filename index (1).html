@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Access — Recovery Simulator</title>
+<style>
+  body{font-family:Arial,Segoe UI;background:#061021;color:#e9f8f3;margin:0;padding:20px}
+  .wrap{max-width:720px;margin:18px auto}
+  .card{background:rgba(255,255,255,0.03);padding:18px;border-radius:12px}
+  h1{margin:0 0 8px}
+  .muted{color:#9fb0d6}
+  input{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit;width:85%;margin-top:8px;text-align:center}
+  .btn{padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(90deg,#00e5ff,#0078ff);cursor:pointer;color:#001;margin:6px;font-weight:700}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb0d6}
+  .bar{height:12px;background:#0b1220;border-radius:999px;overflow:hidden;margin-top:12px}
+  .bar-inner{height:100%;width:0;background:linear-gradient(90deg,#00e5ff,#7c5cff);transition:width 5s linear}
+  .history{margin-top:12px;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;max-height:260px;overflow:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="step-register">
+    <h1>Register & Deposit</h1>
+    <p class="muted">Open the registration link and deposit the required amount (10% deposit). Then enter your 6-digit UID below and click Submit.</p>
+    <p><b>Plan:</b> <span id="planText">—</span> | <b>Deposit:</b> ₹<span id="depositText">—</span></p>
+    <div style="margin-top:10px"><button class="btn" id="openReg">Open Register & Deposit</button></div>
+
+    <input id="uid6" maxlength="6" placeholder="Enter 6-digit UID after deposit">
+    <div style="margin-top:8px"><button class="btn btn-ghost" id="submitUid">Submit & Process</button></div>
+    <p id="procMsg" class="muted"></p>
+  </div>
+
+  <div class="card hidden" id="processing">
+    <h1>Processing...</h1>
+    <p class="muted">Verifying UID and preparing simulator (5 seconds)</p>
+    <div class="bar"><div id="barInner" class="bar-inner"></div></div>
+  </div>
+
+  <div class="card hidden" id="simulator">
+    <h1>Recovery Simulator</h1>
+    <p class="muted">Target: <b id="targetText"></b> | Balance: ₹<b id="balText"></b></p>
+
+    <input id="period" maxlength="3" placeholder="Enter last 3 digits of period (e.g. 256)">
+    <div style="margin-top:10px">
+      <button class="btn" id="predictBtn">Get Prediction (Simulator)</button>
+      <button class="btn btn-ghost" id="winBtn">Win</button>
+      <button class="btn btn-ghost" id="lossBtn">Loss</button>
+      <button class="btn btn-ghost" id="resetBtn">Reset Session</button>
+    </div>
+
+    <div id="prediction" style="margin-top:12px;font-weight:800"></div>
+    <div class="history" id="history"></div>
+  </div>
+</div>
+
+<script>
+/* read plan & deposit from query params */
+const qp = new URLSearchParams(window.location.search);
+const planLoss = parseInt(qp.get('plan') || '3000', 10);
+const deposit = Math.max(1, Math.round((parseInt(qp.get('deposit')||'0',10) || Math.ceil(planLoss*0.10))));
+
+document.getElementById('planText').innerText = planLoss;
+document.getElementById('depositText').innerText = deposit;
+
+let balance = deposit;
+let level = 1;           // 1,2,3
+let currentBet = 0;
+let history = [];
+
+/* Register button */
+document.getElementById('openReg').addEventListener('click', ()=> {
+  window.open('http://www.tashanwin.info/#/register?invitationCode=13413405256','_blank');
+});
+
+/* submit UID and processing */
+document.getElementById('submitUid').addEventListener('click', ()=>{
+  const uid = document.getElementById('uid6').value.trim();
+  if(!/^[0-9]{6}$/.test(uid)){ alert('Enter valid 6-digit UID'); return; }
+  document.getElementById('step-register').classList.add('hidden');
+  document.getElementById('processing').classList.remove('hidden');
+  document.getElementById('procMsg').innerText = 'Processing UID ' + uid + ' ...';
+  const bar = document.getElementById('barInner');
+  bar.style.width = '0%';
+  setTimeout(()=> bar.style.width = '100%', 50);
+  setTimeout(()=>{
+    document.getElementById('processing').classList.add('hidden');
+    document.getElementById('simulator').classList.remove('hidden');
+    updateUI();
+  }, 5000);
+});
+
+/* 3-level bet calculation */
+function calcBet(){
+  if(level === 1) return Math.max(1, Math.round(balance * 0.15));
+  if(level === 2) return Math.max(1, Math.round(balance * 0.30));
+  if(level === 3) return Math.max(1, Math.round(balance * 0.55));
+  return 0;
+}
+
+/* prediction (simulator) */
+document.getElementById('predictBtn').addEventListener('click', ()=>{
+  const p = document.getElementById('period').value.trim();
+  if(!/^[0-9]{3}$/.test(p)){ alert('Enter valid 3-digit period'); return; }
+  currentBet = calcBet();
+  const pred = Math.random() < 0.5 ? 'BIG' : 'SMALL'; // random simulated outcome tip
+  document.getElementById('prediction').innerText = `Period ${p}: Simulator suggestion = ${pred} — Bet ₹${currentBet} (Level ${level})`;
+});
+
+/* Win handler */
+document.getElementById('winBtn').addEventListener('click', ()=>{
+  if(currentBet <= 0){ alert('No active bet — click Get Prediction first'); return; }
+  balance = Math.round(balance + currentBet);
+  history.unshift({time: new Date().toLocaleTimeString(), result:'WIN', bet: currentBet, level: level});
+  currentBet = 0;
+  level = 1; // reset after a win
+  updateUI();
+  checkTarget();
+});
+
+/* Loss handler */
+document.getElementById('lossBtn').addEventListener('click', ()=>{
+  if(currentBet <= 0){ alert('No active bet — click Get Prediction first'); return; }
+  balance = Math.max(0, balance - currentBet);
+  history.unshift({time: new Date().toLocaleTimeString(), result:'LOSS', bet: currentBet, level: level});
+  // escalate level
+  if(level < 3) level++;
+  else level = 1; // after level3 loss, reset cycle
+  currentBet = 0;
+  updateUI();
+  checkTarget();
+});
+
+/* Reset */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset session?')) return;
+  balance = deposit; level = 1; currentBet = 0; history = [];
+  updateUI();
+});
+
+/* UI update & history */
+function updateUI(){
+  document.getElementById('balText').innerText = balance;
+  document.getElementById('targetText').innerText = `${deposit} to ${planLoss}`;
+  const el = document.getElementById('history');
+  el.innerHTML = history.map(h => `<div>${h.time} — Bet ₹${h.bet} — ${h.result} (L${h.level})</div>`).join('');
+}
+
+/* check target completion */
+function checkTarget(){
+  if(balance >= planLoss){
+    setTimeout(()=> {
+      alert('🎉 Congratulations — Your target is completed.');
+      // redirect back to Dashboard
+      window.location.href = 'dashboard.html';
+    }, 300);
+  }
+}
+
+/* init */
+updateUI();
+</script>
+</body>
+</html>

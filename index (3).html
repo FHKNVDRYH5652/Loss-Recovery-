@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — Loss Recovery Plans</title>
+<style>
+  body{font-family:Arial,Segoe UI,Helvetica;background:#071026;color:#eaf6ff;margin:0}
+  .wrap{max-width:900px;margin:28px auto;padding:18px}
+  header{font-size:22px;text-align:center;margin-bottom:12px}
+  .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .plan{background:rgba(255,255,255,0.03);padding:14px;border-radius:10px;text-align:left}
+  .plan b{display:block;font-size:1.05rem}
+  .btn{background:linear-gradient(90deg,#00d2a8,#00a6ff);border:none;color:#012;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700}
+  .muted{color:#9fb0d6;font-size:0.95rem}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div><strong>Premium Recovery Portal (Demo)</strong></div>
+    <div><a href="admin.html" style="color:#9fb0d6;text-decoration:none">Admin panel</a></div>
+  </div>
+
+  <header>Choose a Loss-Recovery Plan</header>
+
+  <div class="plans" id="plans">
+    <!-- plans inserted by JS -->
+  </div>
+</div>
+
+<script>
+const plans = [
+  {loss:3000, price:299},
+  {loss:5000, price:399},
+  {loss:10000, price:499},
+  {loss:25000, price:899},
+  {loss:50000, price:1599},
+  {loss:100000, price:2499},
+  {loss:500000, price:9999}
+];
+
+const container = document.getElementById('plans');
+plans.forEach(p=>{
+  const div = document.createElement('div');
+  div.className = 'plan';
+  const deposit = Math.ceil(p.loss * 0.10); // 10% deposit
+  div.innerHTML = `<b>${p.loss} Loss</b>
+    <div class="muted">Full plan price: ₹${p.price}</div>
+    <div style="margin-top:10px">Deposit (10%): <b>₹${deposit}</b></div>
+    <div style="margin-top:10px"><button class="btn" onclick="choosePlan(${p.loss}, ${deposit})">Choose plan</button></div>`;
+  container.appendChild(div);
+});
+
+function choosePlan(loss, deposit){
+  // open user page with plan & deposit as query params
+  const q = new URLSearchParams({plan: loss, deposit: deposit}).toString();
+  window.location.href = 'user.html?' + q;
+}
+</script>
+</body>
+</html>

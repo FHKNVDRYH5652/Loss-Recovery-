@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>User — Pay & Enter UTR</title>
+<style>
+  body{font-family:Arial,Segoe UI;background:#071026;color:#eaf6ff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+  .card{width:380px;background:rgba(255,255,255,0.04);border-radius:12px;padding:20px;box-shadow:0 12px 30px rgba(0,0,0,0.6);text-align:center}
+  .qr{width:220px;border-radius:10px;display:block;margin:10px auto}
+  input{width:86%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+  .btn{margin-top:12px;background:linear-gradient(90deg,#00d2a8,#00a6ff);color:#012;padding:10px;border-radius:9px;border:none;cursor:pointer;font-weight:700}
+  .small{color:#9fb0d6;font-size:0.95rem}
+  .status{margin-top:12px;padding:8px;border-radius:8px;background:rgba(0,0,0,0.25);font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h2>Unlock Premium — Pay & Enter UTR</h2>
+    <img id="qrImg" class="qr" alt="QR Code">
+    <div class="small">Scan this QR with any UPI app</div>
+
+    <div style="margin-top:12px">
+      <div class="small">Payable amount (deposit shown):</div>
+      <div id="amountBox" style="font-weight:800;font-size:1.3rem;margin-top:6px">₹0</div>
+    </div>
+
+    <div style="margin-top:10px">
+      <input id="utr" type="text" maxlength="12" placeholder="Enter 12-digit UTR after payment"/>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn" id="reqBtn">Request Approval</button>
+    </div>
+
+    <div id="status" class="status" style="display:none">Awaiting approval...</div>
+    <div id="result" style="margin-top:10px"></div>
+  </div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const plan = parseInt(params.get('plan')||'0',10);
+const deposit = parseInt(params.get('deposit')||Math.ceil(plan*0.10),10);
+document.getElementById('amountBox').innerText = '₹' + deposit;
+
+// UPI QR generator
+const upiId = "perfect.k@ptaxis";
+const upiName = "PremiumPortal"; // naam dikhane ke liye
+const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${deposit}&cu=INR`;
+// Google Chart API QR
+document.getElementById("qrImg").src =
+  "https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=" + encodeURIComponent(upiUrl);
+
+document.getElementById('reqBtn').addEventListener('click', ()=>{
+  const utr = document.getElementById('utr').value.trim();
+  if(!/^[0-9]{12}$/.test(utr)){ alert('Enter valid 12-digit UTR'); return; }
+  const key = 'pending_' + utr;
+  const info = { utr: utr, amount: deposit, planLoss: plan, ts: Date.now() };
+  try{ localStorage.setItem(key, JSON.stringify(info)); }catch(e){}
+  document.getElementById('status').style.display = 'block';
+  document.getElementById('status').innerText = 'Pending approval for UTR ' + utr;
+});
+
+// Listen for approval
+setInterval(()=>{
+  const myUtr = document.getElementById('utr').value.trim();
+  if(!/^[0-9]{12}$/.test(myUtr)) return;
+  const appr = localStorage.getItem('approved_' + myUtr);
+  if(appr){
+    let info=null; try{ info=JSON.parse(appr); }catch(e){}
+    document.getElementById('status').style.display='none';
+    document.getElementById('result').innerHTML = '<div style="color:#b8ffce;font-weight:800">✅ Approved for UTR '+myUtr+'</div>';
+    setTimeout(()=>{
+      const planLoss = info && info.planLoss ? info.planLoss : plan;
+      const amount = info && info.amount ? info.amount : deposit;
+      const q = new URLSearchParams({plan:String(planLoss), deposit:String(amount), utr:myUtr}).toString();
+      window.location.href = 'access.html?' + q;
+    }, 1000);
+  }
+}, 1500);
+</script>
+</body>
+</html>
