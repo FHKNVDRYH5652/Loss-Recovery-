@@ -1,164 +1,507 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Access — Recovery Simulator</title>
-<style>
-  body{font-family:Arial,Segoe UI;background:#061021;color:#e9f8f3;margin:0;padding:20px}
-  .wrap{max-width:720px;margin:18px auto}
-  .card{background:rgba(255,255,255,0.03);padding:18px;border-radius:12px}
-  h1{margin:0 0 8px}
-  .muted{color:#9fb0d6}
-  input{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit;width:85%;margin-top:8px;text-align:center}
-  .btn{padding:10px 14px;border-radius:8px;border:none;background:linear-gradient(90deg,#00e5ff,#0078ff);cursor:pointer;color:#001;margin:6px;font-weight:700}
-  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb0d6}
-  .bar{height:12px;background:#0b1220;border-radius:999px;overflow:hidden;margin-top:12px}
-  .bar-inner{height:100%;width:0;background:linear-gradient(90deg,#00e5ff,#7c5cff);transition:width 5s linear}
-  .history{margin-top:12px;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;max-height:260px;overflow:auto}
-</style>
+  <meta charset="UTF-8">
+  <title>Live Period Big/Small Prediction</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Simple font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #050814;
+      --card: #0c1224;
+      --accent: #00e5ff;
+      --accent2: #ff3460;
+      --text: #f5f7ff;
+      --muted: #9aa4c2;
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(0,229,255,0.18), transparent 60%),
+        radial-gradient(circle at bottom, rgba(255,52,96,0.18), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: .9rem;
+      margin-bottom: 20px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(0,229,255,0.1);
+      border: 1px solid rgba(0,229,255,0.4);
+      font-size: .7rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #00ff7b;
+      box-shadow: 0 0 12px #00ff7b;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: .3; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.03), transparent);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 14px 14px 16px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+      margin-bottom: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .card-subtitle {
+      font-size: .8rem;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stat {
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .stat-label {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .stat-value {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: .03em;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: .8rem;
+    }
+
+    .pill-outline {
+      border: 1px solid rgba(255,255,255,0.25);
+      color: var(--muted);
+      background: rgba(0,0,0,0.25);
+    }
+
+    .prediction-box {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .prediction-text {
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+      text-shadow: 0 0 16px rgba(0,229,255,0.7);
+    }
+
+    .prediction-type {
+      font-size: .85rem;
+      color: var(--muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 10px 18px;
+      border: none;
+      cursor: pointer;
+      font-size: .9rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      transition: transform .08s ease, box-shadow .15s ease, filter .15s ease;
+    }
+
+    .btn-main {
+      background: linear-gradient(120deg, var(--accent), var(--accent2));
+      color: #050814;
+      box-shadow: 0 10px 28px rgba(0,229,255,0.5);
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-main:active {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    }
+
+    .btn-main[disabled] {
+      opacity: .6;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .status-text {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    .status-ok {
+      color: #00ff7b;
+    }
+
+    .status-bad {
+      color: #ff607f;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+
+    .results-header h3 {
+      font-size: .95rem;
+      font-weight: 600;
+    }
+
+    .results-header span {
+      font-size: .75rem;
+      color: var(--muted);
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .78rem;
+    }
+
+    .results-table thead {
+      position: sticky;
+      top: 0;
+      background: #080d1a;
+      z-index: 1;
+    }
+
+    .results-table th,
+    .results-table td {
+      padding: 6px 6px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      white-space: nowrap;
+    }
+
+    .results-table th {
+      font-weight: 600;
+      color: var(--muted);
+      font-size: .7rem;
+    }
+
+    .results-table tbody tr:nth-child(2n) {
+      background: rgba(255,255,255,0.01);
+    }
+
+    .badge-mini {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: .7rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .badge-big {
+      background: rgba(255,52,96,0.14);
+      color: #ff829b;
+    }
+
+    .badge-small {
+      background: rgba(0,229,255,0.14);
+      color: #6ae9ff;
+    }
+
+    .results-wrapper {
+      max-height: 360px;
+      overflow: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(0,0,0,0.3);
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      font-size: .7rem;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card" id="step-register">
-    <h1>Register & Deposit</h1>
-    <p class="muted">Open the registration link and deposit the required amount (10% deposit). Then enter your 6-digit UID below and click Submit.</p>
-    <p><b>Plan:</b> <span id="planText">—</span> | <b>Deposit:</b> ₹<span id="depositText">—</span></p>
-    <div style="margin-top:10px"><button class="btn" id="openReg">Open Register & Deposit</button></div>
-
-    <input id="uid6" maxlength="6" placeholder="Enter 6-digit UID after deposit">
-    <div style="margin-top:8px"><button class="btn btn-ghost" id="submitUid">Submit & Process</button></div>
-    <p id="procMsg" class="muted"></p>
-  </div>
-
-  <div class="card hidden" id="processing">
-    <h1>Processing...</h1>
-    <p class="muted">Verifying UID and preparing simulator (5 seconds)</p>
-    <div class="bar"><div id="barInner" class="bar-inner"></div></div>
-  </div>
-
-  <div class="card hidden" id="simulator">
-    <h1>Recovery Simulator</h1>
-    <p class="muted">Target: <b id="targetText"></b> | Balance: ₹<b id="balText"></b></p>
-
-    <input id="period" maxlength="3" placeholder="Enter last 3 digits of period (e.g. 256)">
-    <div style="margin-top:10px">
-      <button class="btn" id="predictBtn">Get Prediction (Simulator)</button>
-      <button class="btn btn-ghost" id="winBtn">Win</button>
-      <button class="btn btn-ghost" id="lossBtn">Loss</button>
-      <button class="btn btn-ghost" id="resetBtn">Reset Session</button>
+  <div class="app">
+    <div class="badge">
+      <div class="live-dot"></div>
+      LIVE PERIOD + RANDOM BIG/SMALL
     </div>
+    <h1 class="title">Live Big / Small Panel</h1>
+    <p class="subtitle">
+      Ye website sirf <strong>random prediction</strong> deti hai. Koi hack ya guarantee nahi.
+    </p>
 
-    <div id="prediction" style="margin-top:12px;font-weight:800"></div>
-    <div class="history" id="history"></div>
+    <!-- Live Info + Prediction -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Live Game Status</div>
+          <div class="card-subtitle" id="apiStatusText">Server se data load ho raha hai...</div>
+        </div>
+        <span class="pill pill-outline" id="lastUpdatedText">Last update: --</span>
+      </div>
+
+      <div class="grid">
+        <div class="stat">
+          <div class="stat-label">Current Live Period</div>
+          <div class="stat-value" id="currentPeriod">------</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Next Period (Prediction ke liye)</div>
+          <div class="stat-value" id="nextPeriod">------</div>
+        </div>
+      </div>
+
+      <div class="prediction-box">
+        <div class="prediction-text" id="predictionText">--</div>
+        <div class="prediction-type" id="predictionInfo">Prediction abhi generate nahi hua</div>
+
+        <button class="btn btn-main" id="predictBtn">
+          Generate Random Prediction (BIG / SMALL)
+        </button>
+
+        <p class="status-text">
+          <span class="status-ok">Note:</span> Predict button hamesha
+          <strong>Next Period</strong> ke liye Big/Small suggest karega.
+        </p>
+      </div>
+    </section>
+
+    <!-- Result History -->
+    <section class="card">
+      <div class="results-header">
+        <h3>Last Results (API se)</h3>
+        <span id="resultsCount">0 records</span>
+      </div>
+      <div class="results-wrapper">
+        <table class="results-table" id="resultsTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Period</th>
+              <th>Number</th>
+              <th>Big / Small</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <tr>
+              <td colspan="4" style="text-align:center; padding:10px;">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footer-note">
+        "Big" = result ≥ 5, "Small" = result &lt; 5.  
+        Jitna data API bhejti hai, utna niche dikhaya jaa raha hai.
+      </p>
+    </section>
   </div>
-</div>
 
-<script>
-/* read plan & deposit from query params */
-const qp = new URLSearchParams(window.location.search);
-const planLoss = parseInt(qp.get('plan') || '3000', 10);
-const deposit = Math.max(1, Math.round((parseInt(qp.get('deposit')||'0',10) || Math.ceil(planLoss*0.10))));
+  <script>
+    const API_URL = 'https://harshpredictor.site/api/api.php';
 
-document.getElementById('planText').innerText = planLoss;
-document.getElementById('depositText').innerText = deposit;
+    const apiStatusText   = document.getElementById('apiStatusText');
+    const lastUpdatedText = document.getElementById('lastUpdatedText');
+    const currentPeriodEl = document.getElementById('currentPeriod');
+    const nextPeriodEl    = document.getElementById('nextPeriod');
+    const predictionText  = document.getElementById('predictionText');
+    const predictionInfo  = document.getElementById('predictionInfo');
+    const predictBtn      = document.getElementById('predictBtn');
+    const resultsBody     = document.getElementById('resultsBody');
+    const resultsCount    = document.getElementById('resultsCount');
 
-let balance = deposit;
-let level = 1;           // 1,2,3
-let currentBet = 0;
-let history = [];
+    let latestIssueNumber = null;
 
-/* Register button */
-document.getElementById('openReg').addEventListener('click', ()=> {
-  window.open('http://www.tashanwin.info/#/register?invitationCode=13413405256','_blank');
-});
+    // Helper: number -> Big/Small
+    function sizeFromNumber(n) {
+      const num = parseInt(n, 10);
+      if (isNaN(num)) return '-';
+      return num >= 5 ? 'Big' : 'Small';
+    }
 
-/* submit UID and processing */
-document.getElementById('submitUid').addEventListener('click', ()=>{
-  const uid = document.getElementById('uid6').value.trim();
-  if(!/^[0-9]{6}$/.test(uid)){ alert('Enter valid 6-digit UID'); return; }
-  document.getElementById('step-register').classList.add('hidden');
-  document.getElementById('processing').classList.remove('hidden');
-  document.getElementById('procMsg').innerText = 'Processing UID ' + uid + ' ...';
-  const bar = document.getElementById('barInner');
-  bar.style.width = '0%';
-  setTimeout(()=> bar.style.width = '100%', 50);
-  setTimeout(()=>{
-    document.getElementById('processing').classList.add('hidden');
-    document.getElementById('simulator').classList.remove('hidden');
-    updateUI();
-  }, 5000);
-});
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
 
-/* 3-level bet calculation */
-function calcBet(){
-  if(level === 1) return Math.max(1, Math.round(balance * 0.15));
-  if(level === 2) return Math.max(1, Math.round(balance * 0.30));
-  if(level === 3) return Math.max(1, Math.round(balance * 0.55));
-  return 0;
-}
+    async function fetchLiveData() {
+      try {
+        const res = await fetch(API_URL + '?v=' + Date.now());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const list = data && data.data && Array.isArray(data.data.list) ? data.data.list : null;
 
-/* prediction (simulator) */
-document.getElementById('predictBtn').addEventListener('click', ()=>{
-  const p = document.getElementById('period').value.trim();
-  if(!/^[0-9]{3}$/.test(p)){ alert('Enter valid 3-digit period'); return; }
-  currentBet = calcBet();
-  const pred = Math.random() < 0.5 ? 'BIG' : 'SMALL'; // random simulated outcome tip
-  document.getElementById('prediction').innerText = `Period ${p}: Simulator suggestion = ${pred} — Bet ₹${currentBet} (Level ${level})`;
-});
+        if (!list || list.length === 0) {
+          apiStatusText.textContent = 'API respond kar rahi hai, lekin list empty hai.';
+          apiStatusText.classList.remove('status-ok', 'status-bad');
+          return;
+        }
 
-/* Win handler */
-document.getElementById('winBtn').addEventListener('click', ()=>{
-  if(currentBet <= 0){ alert('No active bet — click Get Prediction first'); return; }
-  balance = Math.round(balance + currentBet);
-  history.unshift({time: new Date().toLocaleTimeString(), result:'WIN', bet: currentBet, level: level});
-  currentBet = 0;
-  level = 1; // reset after a win
-  updateUI();
-  checkTarget();
-});
+        // Latest result
+        const latest = list[0];
+        latestIssueNumber = latest.issueNumber;
 
-/* Loss handler */
-document.getElementById('lossBtn').addEventListener('click', ()=>{
-  if(currentBet <= 0){ alert('No active bet — click Get Prediction first'); return; }
-  balance = Math.max(0, balance - currentBet);
-  history.unshift({time: new Date().toLocaleTimeString(), result:'LOSS', bet: currentBet, level: level});
-  // escalate level
-  if(level < 3) level++;
-  else level = 1; // after level3 loss, reset cycle
-  currentBet = 0;
-  updateUI();
-  checkTarget();
-});
+        currentPeriodEl.textContent = latest.issueNumber;
+        const nextPeriod = (BigInt(latest.issueNumber) + 1n).toString();
+        nextPeriodEl.textContent = nextPeriod;
 
-/* Reset */
-document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if(!confirm('Reset session?')) return;
-  balance = deposit; level = 1; currentBet = 0; history = [];
-  updateUI();
-});
+        apiStatusText.textContent = 'Live data connected';
+        apiStatusText.classList.add('status-ok');
+        apiStatusText.classList.remove('status-bad');
 
-/* UI update & history */
-function updateUI(){
-  document.getElementById('balText').innerText = balance;
-  document.getElementById('targetText').innerText = `${deposit} to ${planLoss}`;
-  const el = document.getElementById('history');
-  el.innerHTML = history.map(h => `<div>${h.time} — Bet ₹${h.bet} — ${h.result} (L${h.level})</div>`).join('');
-}
+        lastUpdatedText.textContent = 'Last update: ' + formatTime(new Date());
 
-/* check target completion */
-function checkTarget(){
-  if(balance >= planLoss){
-    setTimeout(()=> {
-      alert('🎉 Congratulations — Your target is completed.');
-      // redirect back to Dashboard
-      window.location.href = 'dashboard.html';
-    }, 300);
-  }
-}
+        renderResults(list);
+      } catch (err) {
+        console.error(err);
+        apiStatusText.textContent = 'Server / network error. Auto retry ho raha hai.';
+        apiStatusText.classList.add('status-bad');
+        apiStatusText.classList.remove('status-ok');
+      }
+    }
 
-/* init */
-updateUI();
-</script>
+    function renderResults(list) {
+      resultsBody.innerHTML = '';
+
+      list.forEach((item, index) => {
+        const tr = document.createElement('tr');
+
+        const num = parseInt(item.number, 10);
+        const size = sizeFromNumber(num);
+
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${item.issueNumber}</td>
+          <td>${item.number}</td>
+          <td>
+            <span class="badge-mini ${size === 'Big' ? 'badge-big' : 'badge-small'}">
+              ${size}
+            </span>
+          </td>
+        `;
+        resultsBody.appendChild(tr);
+      });
+
+      resultsCount.textContent = list.length + ' records';
+    }
+
+    // Random prediction for next period
+    predictBtn.addEventListener('click', () => {
+      if (!latestIssueNumber) {
+        predictionText.textContent = '--';
+        predictionInfo.textContent = 'Abhi tak live period load nahi hua. Thoda wait karo.';
+        return;
+      }
+
+      const nextPeriod = (BigInt(latestIssueNumber) + 1n).toString();
+      nextPeriodEl.textContent = nextPeriod;
+
+      predictBtn.disabled = true;
+      predictBtn.textContent = 'Calculating...';
+
+      setTimeout(() => {
+        const options = ['BIG', 'SMALL'];
+        const pick = options[Math.floor(Math.random() * options.length)];
+
+        predictionText.textContent = pick;
+        predictionInfo.textContent =
+          'Next Period ' + nextPeriod + ' ke liye random suggestion: ' + pick +
+          ' (ye sirf random hai, koi hack nahi).';
+
+        predictBtn.disabled = false;
+        predictBtn.textContent = 'Generate Random Prediction (BIG / SMALL)';
+      }, 600); // thoda fake "thinking" time
+    });
+
+    // Initial load + auto refresh
+    fetchLiveData();
+    setInterval(fetchLiveData, 5000);
+  </script>
 </body>
 </html>
